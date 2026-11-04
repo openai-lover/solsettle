@@ -45,8 +45,8 @@ export function quoteRequest(inv,origin,destination,refundTo,{dry=true,now=Date.
   if(origin.assetId===destination.assetId)throw Error('Choose a different source asset for this cross-chain checkout.');
   return {dry,swapType:'EXACT_OUTPUT',sessionId:inv.id,depositType:'ORIGIN_CHAIN',depositMode:'SIMPLE',originAsset:origin.assetId,destinationAsset:destination.assetId,amount:units(inv.amount),slippageTolerance:50,refundTo,refundType:'ORIGIN_CHAIN',recipient:inv.recipient,recipientType:'DESTINATION_CHAIN',deadline:new Date(now+15*60*1000).toISOString()};
 }
-export function depositDeadline(quote) {
-  const dates = [quote?.deadline, quote?.timeWhenInactive].filter(Boolean).map(Date.parse);
+export function depositDeadline(quote, requestedDeadline) {
+  const dates = [quote?.deadline, quote?.timeWhenInactive, requestedDeadline].filter(Boolean).map(Date.parse);
   return dates.length && dates.every(Number.isFinite) ? Math.min(...dates) : NaN;
 }
 
@@ -60,7 +60,7 @@ export function validateQuote(response, request, { requireFresh = true } = {}) {
   }
   if (!/^[1-9]\d{0,29}$/.test(q.amountIn || '') || !/^[1-9]\d{0,29}$/.test(q.amountOut || '') ||
       BigInt(q.amountOut) < BigInt(request.amount)) throw Error('This quote does not cover the invoice.');
-  const expiry = depositDeadline(q);
+  const expiry = depositDeadline(q, request.deadline);
   if (!request.dry && (typeof q.depositAddress !== 'string' || !q.depositAddress.trim() ||
       !Number.isFinite(expiry) || (requireFresh && expiry <= Date.now()))) {
     throw Error('This payment quote has expired or is missing deposit instructions.');
@@ -68,13 +68,27 @@ export function validateQuote(response, request, { requireFresh = true } = {}) {
   return response;
 }
 
-export function reconcile(status, request, depositAddress, proof = null) {
+export function reconcile(status, request, depositAddress, proof = null, issuedQuote = null) {
   const result = (state, title, paid = false) => ({state, title, paid});
   const unchecked = () => result('UNVERIFIED', 'Evidence needs review');
   if (!status || typeof status.status !== 'string') return unchecked();
   const state = status.status;
   if (state === 'PENDING_DEPOSIT' && !status.quoteResponse) return result(state, 'Awaiting payment');
-  try { validateQuote(status.quoteResponse, request, { requireFresh: false }); } catch { return unchecked(); }
+  try {
+    const returned = status.quoteResponse;
+    let expected = request;
+    // Aurora echoes sessionId when issuing a quote, but may omit it from status.
+    // Accept that omission only for the same provider-signed quote originally issued for this invoice.
+    if (request.sessionId && returned?.quoteRequest?.sessionId === undefined) {
+      validateQuote(issuedQuote, request, { requireFresh: false });
+      if (typeof issuedQuote.signature !== 'string' || !issuedQuote.signature || issuedQuote.signature !== returned.signature ||
+          !issuedQuote.timestamp || issuedQuote.timestamp !== returned.timestamp ||
+          issuedQuote.quote.depositAddress !== depositAddress || issuedQuote.quote.amountIn !== returned.quote?.amountIn ||
+          issuedQuote.quote.amountOut !== returned.quote?.amountOut) return unchecked();
+      expected = { ...request, sessionId: undefined };
+    }
+    validateQuote(returned, expected, { requireFresh: false });
+  } catch { return unchecked(); }
   if (!depositAddress || request.dry || status.quoteResponse.quote.depositAddress !== depositAddress) return unchecked();
   const details = status.swapDetails;
   if (state === 'REFUNDED') {
@@ -98,8 +112,8 @@ export function reconcile(status, request, depositAddress, proof = null) {
   return result('SUCCESS', 'Verified on Solana', true);
 }
 
-export function canShowDeposit(state, quote, now = Date.now()) {
-  return state === 'PENDING_DEPOSIT' && Number.isFinite(depositDeadline(quote)) && now < depositDeadline(quote);
+export function canShowDeposit(state, quote, now = Date.now(), requestedDeadline) {
+  return state === 'PENDING_DEPOSIT' && Number.isFinite(depositDeadline(quote, requestedDeadline)) && now < depositDeadline(quote, requestedDeadline);
 }
 export function safeUrl(s){try{const u=new URL(s);return u.protocol==='https:'?u.href:null;}catch{return null;}}
 export async function aurora(path,key,options={}){

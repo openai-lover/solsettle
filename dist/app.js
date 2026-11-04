@@ -1,6 +1,7 @@
 import {USDC_MINT,units,formatAtomic,sourceAddress,invoice,encodeInvoice,decodeInvoice,destinationToken,quoteRequest,validateQuote,reconcile,canShowDeposit,depositDeadline,aurora} from './core.js';
 import { verifyCredits, formatUsdc } from './solana-proof.js';
 import { mountReceiptCheck, renderCredit } from './receipt-ui.js';
+import { BASE_ASSET, verifyBaseUsdc } from './base-proof.js';
 import { mountQuotes } from './quote-preview.js';
 import { PROJECT_PUBLIC_KEY } from './project-config.js';
 const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -32,18 +33,18 @@ $('#paymentBody').innerHTML=`<div class="field"><label for="source">Pay with</la
 $('#getquote').onclick=async()=>{const b=$('#getquote');b.disabled=true;$('#actionError').innerHTML='';$('#previewQuote').innerHTML='';const version=epoch;try{const origin=tokens.find(t=>t.assetId===$('#source').value);const req=quoteRequest(inv,origin,destinationToken(tokens),$('#refund').value.trim());const response=validateQuote(await aurora('quote',integrationKey(),{body:req}),req);if(version!==epoch||$('#source').value!==origin.assetId||$('#refund').value.trim()!==req.refundTo)return;const q=response.quote;$('#previewQuote').innerHTML=`<div class="status"><div class="kv"><span>You send approximately</span><strong>${esc(formatAtomic(q.amountIn,origin.decimals))} ${esc(origin.symbol)}</strong></div><div class="kv"><span>On network</span><strong>${esc(origin.blockchain)}</strong></div><div class="kv"><span>Invoice receives</span><strong>${esc(formatAtomic(q.amountOut,6))} USDC</strong></div><div class="kv"><span>Estimated duration</span><strong>${esc(q.timeEstimate)} sec</strong></div><p>Final deposit instructions will use a fresh quote. Amounts can change. Wallet gas is additional.</p></div><button class="primary full" id="prepare">Prepare payment instructions</button>`;$('#prepare').onclick=()=>prepare(inv,origin,req.refundTo);}catch(e){if(version===epoch)error(e.message);}finally{if(version===epoch)b.disabled=false;}};['source','refund'].forEach(id=>$('#'+id).addEventListener('input',()=>{$('#previewQuote').innerHTML='';}));}
 async function loadTokens(){if(!tokens.length){const response=await aurora('tokens',integrationKey());if(!Array.isArray(response.tokens))throw Error('Token service response is invalid.');tokens=response.tokens;}return tokens;}
 async function prepare(inv,origin,refundTo){const version=epoch;const button=$('#prepare');button.disabled=true;try{const req=quoteRequest(inv,origin,destinationToken(tokens),refundTo,{dry:false});const q=validateQuote(await aurora('quote',integrationKey(),{body:req}),req);if(version!==epoch||$('#source').value!==origin.assetId||$('#refund').value.trim()!==refundTo)return;if(!sourceAddress(origin.blockchain,q.quote.depositAddress))throw Error('Aurora did not return an address on the selected source network.');request=req;quote=q;receipt=null;chainProof=null;verifyMessage='';persistSession();render();}catch(e){if(version===epoch){error(e.message);button.disabled=false;}}}
-function persistSession(){const s=read('solsettle.sessions',{}),old=s[current.id];const same=old?.quote?.quote?.depositAddress===quote?.quote?.depositAddress;s[current.id]={invoice:current,request,quote,receipt,chainProof,depositLocked:Boolean((same && old.depositLocked) || (receipt && receipt.status !== 'PENDING_DEPOSIT')),origin:tokens.find(t=>t.assetId===request.originAsset)||(same?old?.origin:null),key:same?old.key:integrationKey()};localStorage.setItem('solsettle.sessions',JSON.stringify(s));}
+function persistSession(baseProof = null){const s=read('solsettle.sessions',{}),old=s[current.id];const same=old?.quote?.quote?.depositAddress===quote?.quote?.depositAddress;s[current.id]={invoice:current,request,quote,receipt,chainProof,baseProof:baseProof || (same ? old.baseProof : null),depositLocked:Boolean((same && old.depositLocked) || (receipt && receipt.status !== 'PENDING_DEPOSIT')),origin:tokens.find(t=>t.assetId===request.originAsset)||(same?old?.origin:null),key:same?old.key:integrationKey()};localStorage.setItem('solsettle.sessions',JSON.stringify(s));}
 function depositPanel() {
   const q = quote.quote;
-  const expiry = depositDeadline(q);
-  const state = receipt ? reconcile(receipt, request, q.depositAddress, chainProof) :
+  const expiry = depositDeadline(q, request.deadline);
+  const state = receipt ? reconcile(receipt, request, q.depositAddress, chainProof, quote) :
     {state:'PENDING_DEPOSIT', title:'Awaiting payment', paid:false};
   const session = read('solsettle.sessions', {})[current.id];
   
   const origin = tokens.find(token => token.assetId === request.originAsset) || session?.origin;
   const validSource = origin?.assetId === request.originAsset && Number.isInteger(origin.decimals) && origin.decimals >= 0 &&
     origin.decimals <= 30 && sourceAddress(origin.blockchain, q.depositAddress);
-  const canDeposit = validSource && !session?.depositLocked && canShowDeposit(state.state, q);
+  const canDeposit = validSource && !session?.depositLocked && canShowDeposit(state.state, q, Date.now(), request.deadline);
   const asset = esc(origin?.symbol || request.originAsset);
   const messages = {
     PENDING_DEPOSIT: canDeposit ? 'Send once from your wallet on the selected source network.' : 'Deposit instructions are closed. Track this attempt and any funds already sent.',
@@ -70,14 +71,28 @@ function depositPanel() {
     <div class="kv"><span>Source refund wallet</span></div><div class="address">${esc(request.refundTo)}</div>
     ${state.state === 'REFUNDED' ? '<div class="status"><strong>Provider-reported refund</strong><p>'+esc(details.refundedAmountFormatted || details.refundedAmount)+' '+(details.refundedAmountFormatted?asset:'atomic source units')+'</p>'+esc(details.refundReason || 'Reason not supplied')+'</div>' : ''}
     <div id="chainEvidence" aria-live="polite"></div>
+    <div id="originEvidence" aria-live="polite"></div>
     ${verifyMessage ? '<p class="help">'+esc(verifyMessage)+'</p>' : ''}
     <button class="primary full" id="refresh">Refresh payment status</button>
     <div class="actions"><button class="quiet" id="exportSession">Export payment record</button>
     ${state.state === 'REFUNDED' ? '<button class="quiet" id="retryRefund">Archive refund &amp; request a fresh quote</button>' : ''}</div>
     <p class="help">Your wallet signs the transfer. Refreshing only reads Aurora and Solana. If money has already moved, track the original attempt.</p>`;
   if (chainProof) renderCredit(chainProof, $('#chainEvidence'));
+  const originNode=$('#originEvidence');
+  if (state.paid && /^[1-9]\d*$/.test(details.refundedAmount || '') && origin) {
+    const note=document.createElement('p');note.textContent='Aurora-reported source return: '+formatAtomic(details.refundedAmount,origin.decimals)+' '+origin.symbol+'. The invoice remains paid.';
+    originNode.append(note);
+  }
+  if (session?.baseProof) {
+    for (const [title,tx] of [['Base deposit',session.baseProof.depositTx],['Base refund',session.baseProof.refundTx]]) {
+      if (!tx || !/^0x[0-9a-f]{64}$/i.test(tx.hash)) continue;
+      const link=document.createElement('a');link.href='https://basescan.org/tx/'+tx.hash;link.target='_blank';link.rel='noopener noreferrer';
+      link.className='external';link.textContent=title+' verified · '+formatAtomic(tx.atomic,6)+' USDC ↗';
+      originNode.append(link,document.createElement('br'));
+    }
+  }
   if (canDeposit) $('#copyDeposit').onclick = async () => {
-    if (!canShowDeposit(state.state, q)) { depositPanel(); return; }
+    if (!canShowDeposit(state.state, q, Date.now(), request.deadline)) { depositPanel(); return; }
     try { await navigator.clipboard.writeText(q.depositAddress); toast('Deposit address copied. Check the network.'); }
     catch { error('Copy the deposit address manually.'); }
   };
@@ -85,7 +100,7 @@ function depositPanel() {
     const sessions = read('solsettle.sessions', {});
     const history = read('solsettle.attempts', {});
     const previous = sessions[current.id];
-    if (!previous || reconcile(previous.receipt, previous.request, previous.quote?.quote?.depositAddress).state !== 'REFUNDED') return;
+    if (!previous || reconcile(previous.receipt, previous.request, previous.quote?.quote?.depositAddress, null, previous.quote).state !== 'REFUNDED') return;
     history[current.id] = [...(history[current.id] || []), previous];
     localStorage.setItem('solsettle.attempts', JSON.stringify(history));
     delete sessions[current.id];
@@ -114,7 +129,7 @@ async function refresh() {
     receipt = data;
     chainProof = null;
     verifyMessage = '';
-    if (reconcile(data,request,deposit).state === 'CHAIN_CHECK_REQUIRED') {
+    if (reconcile(data,request,deposit,null,quote).state === 'CHAIN_CHECK_REQUIRED') {
       try {
         const hashes = data.swapDetails.destinationChainTxHashes.map(tx => tx.hash);
         const verified = await verifyCredits(current.recipient, units(current.amount), hashes);
@@ -128,12 +143,18 @@ async function refresh() {
         verifyMessage = e.message;
       }
     }
-    const state = reconcile(data,request,deposit,chainProof);
+    const state = reconcile(data,request,deposit,chainProof,quote);
     const local = records.find(row => row.invoice.id === current.id && JSON.stringify(row.invoice) === JSON.stringify(current));
     if (local && state.paid) {
       local.paid = true; local.needsRecheck = false; local.receipt = data; local.chainProof = chainProof; save();
     }
-    persistSession();
+    let baseProof=null;
+    if(request.originAsset === BASE_ASSET && (state.paid || state.state==='REFUNDED')) {
+      try { baseProof=await verifyBaseUsdc(data); }
+      catch { verifyMessage='Base transfer logs are temporarily unavailable. The source return is shown as provider-reported.'; }
+      if(version!==epoch)return;
+    }
+    persistSession(baseProof);
     depositPanel();
   } catch (e) { if (version === epoch) { error(e.message); button.disabled = false; } }
 }
