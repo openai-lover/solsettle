@@ -1,0 +1,132 @@
+WEBVTT
+
+00:00:00.220 --> 00:00:04.210
+A design studio invoices in U S D C on Solana.
+
+00:00:04.210 --> 00:00:06.386
+Its client keeps funds on Base.
+
+00:00:06.386 --> 00:00:11.464
+The studio needs a fixed amount, and someone has to check whether it arrived.
+
+00:00:11.464 --> 00:00:15.817
+SolSettle puts the invoice, routing terms, and destination receipt in one place.
+
+00:00:16.577 --> 00:00:20.878
+The merchant enters a project name, amount, due date, and Solana receiving wallet.
+
+00:00:20.878 --> 00:00:23.857
+The share link carries those terms to the client.
+
+00:00:23.857 --> 00:00:28.820
+The link is unsigned, so the client should confirm the receiving address with the
+merchant.
+
+00:00:28.820 --> 00:00:31.798
+The app never asks for a wallet seed phrase.
+
+00:00:32.558 --> 00:00:36.306
+Here is a fictional two hundred fifty dollar design invoice.
+
+00:00:36.306 --> 00:00:40.803
+In the sample, the client chooses U S D C on Base.
+
+00:00:40.803 --> 00:00:43.801
+Live mode uses Aurora's exact output Swap API.
+
+00:00:43.801 --> 00:00:48.298
+It binds the amount, destination asset, recipient, source refund address and
+expiry.
+
+00:00:48.298 --> 00:00:52.795
+The payer reviews a fresh quote before sending from their own wallet.
+
+00:00:52.795 --> 00:00:55.418
+The quote on this screen is simulated.
+
+00:00:56.178 --> 00:00:58.279
+Now take the underfunded path.
+
+00:00:58.279 --> 00:01:07.102
+This fictional provider record reports two hundred forty-nine U S D C deposited,
+and two hundred forty-eight point nine five returned.
+
+00:01:07.102 --> 00:01:11.304
+The reconciliation function checks the original quote and refund details.
+
+00:01:11.304 --> 00:01:13.405
+The invoice receives zero credit.
+
+00:01:13.405 --> 00:01:15.086
+The deposit instructions close.
+
+00:01:15.086 --> 00:01:20.128
+These sample amounts demonstrate the rules, and no refund transaction was sent.
+
+00:01:20.888 --> 00:01:25.960
+For a live check, open Verify a receipt and load the public reference.
+
+00:01:25.960 --> 00:01:28.691
+These inputs identify an existing public transfer.
+
+00:01:28.691 --> 00:01:31.422
+It is separate from the example invoice.
+
+00:01:31.422 --> 00:01:35.323
+Pressing Verify asks a Solana node for the finalized transaction.
+
+00:01:35.323 --> 00:01:37.664
+This action only reads public data.
+
+00:01:38.424 --> 00:01:40.212
+The node confirms successful execution.
+
+00:01:40.212 --> 00:01:44.859
+SolSettle checks the mint, owner, transfer instructions and net change in token
+balances.
+
+00:01:44.859 --> 00:01:51.293
+Here the eligible credit is exactly thirty-four point eight four two seven nine
+eight U S D C.
+
+00:01:51.293 --> 00:01:58.085
+An invoice in live checkout would also need a matching success response from
+Aurora for its own deposit address.
+
+00:01:58.845 --> 00:02:03.695
+Open the destination transaction to inspect the same signature in Solana Explorer.
+
+00:02:03.695 --> 00:02:06.524
+The explorer reports success and finalized confirmation.
+
+00:02:06.524 --> 00:02:08.545
+Its slot matches the receipt.
+
+00:02:08.545 --> 00:02:12.991
+This gives the merchant an independent trail for the destination amount.
+
+00:02:13.751 --> 00:02:18.062
+Raise the expected amount to thirty-five U S D C and check again.
+
+00:02:18.062 --> 00:02:25.357
+The transaction still succeeded, but the credit falls short by zero point one five
+seven two zero two U S D C.
+
+00:02:25.357 --> 00:02:28.673
+SolSettle reports the difference in the expected and credited figures.
+
+00:02:28.673 --> 00:02:30.663
+The underlying transaction has not changed.
+
+00:02:31.423 --> 00:02:37.208
+Twenty-three automated checks cover quote binding, missing evidence, short
+payments, refunds and duplicate signatures.
+
+00:02:37.208 --> 00:02:43.407
+This walkthrough showed simulated checkout and refund records, followed by an
+actual read-only mainnet lookup.
+
+00:02:43.407 --> 00:02:52.913
+The outstanding integration milestone is a funded cross-chain payment initiated by
+this project, followed to its own Solana U S D C receipt.
+
