@@ -73,6 +73,21 @@ test('every refund must match the original deposit and report a positive amount'
 test('deposit instructions close on inactivity or any non-pending state',()=>{
  const q={deadline:'2030-02-02T00:00:00Z',timeWhenInactive:'2030-02-01T00:00:00Z'};
  assert.equal(depositDeadline(q),Date.parse(q.timeWhenInactive));
+ const earlier='2030-01-31T01:00:00Z';assert.equal(depositDeadline(q,earlier),Date.parse(earlier));
+ assert.equal(canShowDeposit('PENDING_DEPOSIT',q,Date.parse(earlier),earlier),false);
  for(const state of ['REFUNDED','FAILED','INCOMPLETE_DEPOSIT','PROCESSING','KNOWN_DEPOSIT_TX','UNVERIFIED','CHAIN_CHECK_REQUIRED','SUCCESS'])assert.equal(canShowDeposit(state,q,0),false);
  assert.equal(canShowDeposit('PENDING_DEPOSIT',q,0),true);assert.equal(canShowDeposit('PENDING_DEPOSIT',q,Date.parse(q.timeWhenInactive)),false);
+});
+test('a status without client sessionId binds only to the original signed quote',async()=>{
+ const issued={...quote,signature:'test-provider-signature',timestamp:'2026-11-04T13:00:33.991Z'};
+ const statusReq={...req};delete statusReq.sessionId;
+ const returned={...status,quoteResponse:{...issued,quoteRequest:statusReq,correlationId:'new-status-correlation'}};
+ const proof=await verifyCredits(recipient,req.amount,[signature],makeRpc(fixture()));
+ assert.equal(reconcile(returned,req,deposit,proof,issued).paid,true);
+ for(const wrong of [null,{...issued,signature:'different'},{...issued,timestamp:'other'},
+     {...issued,quote:{...issued.quote,amountIn:'2509999'}},
+     {...issued,quoteRequest:{...req,sessionId:'SS-OTHER'}}]) {
+   assert.equal(reconcile(returned,req,deposit,proof,wrong).paid,false);
+ }
+ assert.equal(reconcile({...returned,quoteResponse:{...returned.quoteResponse,quoteRequest:{...statusReq,recipient:other}}},req,deposit,proof,issued).paid,false);
 });
