@@ -1,0 +1,15 @@
+{
+  "invoiceId": "SS-7824D845",
+  "observedDate": "2026-11-04",
+  "quotedAt": "2026-11-04T13:00:33.991Z",
+  "quotedInputAtomic": "748888",
+  "depositedAtomic": "748888",
+  "outputAtomic": "500000",
+  "returnAtomic": "315",
+  "depositAddress": "0x0a1292356e9eC8c7EFc493d56F4Dab5227FB61f9",
+  "issuedSignatureSha256": "72bfd2ee47352e5070b78c605eb4a16e3d2a1aa1b29af508abedd1c586da2e11",
+  "originalTermsSha256": "516cc650698bbfe22787a54cc26f6e6e55d58d9ea64cbc4eb3af79e465b4db52",
+  "sourceTx": "0x4deafb688eb0db7033a1c66c42498cca5de73faabb79ddc5c730e8b7138e8353",
+  "destinationTx": "5ihmVpAbjHJT3mPeLLnAGetPsyJGgetCtDpi1PHP1sS5huQ49ngTNGkUWtMtWoEQwKEiAV65vFGuerA3btwK9uHw",
+  "returnTx": "0x23bb6e6b2d97c5fb37db8c0d319aa55469660798a38f40b73f5cf45ad8d65f3e"
+}

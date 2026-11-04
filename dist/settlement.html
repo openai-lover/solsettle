@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="referrer" content="no-referrer">
+<title>Project payment receipt · SolSettle</title><link rel="icon" href="logo.svg"><link rel="stylesheet" href="review.css"><link rel="stylesheet" href="settlement.css"></head>
+<body><header><strong>SolSettle</strong><nav aria-label="Project links"><a href="./">Workspace</a><a href="watch.html">Walkthrough</a><a href="slides.html">Slides</a></nav></header>
+<main><div class="label">Funded project test · Base to Solana</div><h1>One paid USDC invoice</h1>
+<p>Inspect the original payment, the merchant’s finalized credit and a separate return to the refund wallet. Refresh to read Aurora and both networks again.</p>
+<section class="paper-receipt" aria-label="Funded payment evidence"><div class="receipt-head"><span>SolSettle payment record</span><strong id="badge">Recorded receipt</strong></div>
+<div class="receipt-row"><div><span>01 / Base</span><h2>Source deposit</h2></div><div class="number"><strong id="deposit">—</strong><span>USDC</span><a id="depositLink" target="_blank" rel="noopener noreferrer">Inspect deposit ↗</a></div></div>
+<div class="receipt-row"><div><span>02 / Solana</span><h2>Merchant credit</h2></div><div class="number"><strong id="credit">—</strong><span>USDC</span><a id="creditLink" target="_blank" rel="noopener noreferrer">Inspect destination ↗</a></div></div>
+<div class="receipt-row"><div><span>03 / Base</span><h2>Partial refund</h2></div><div class="number"><strong id="returned">—</strong><span>USDC</span><a id="returnLink" target="_blank" rel="noopener noreferrer">Inspect return ↗</a></div></div>
+</section><div class="controls"><button id="verify" disabled>Recheck Aurora and both chains ↗</button><a href="./#quote">Preview a fresh price</a></div>
+<div id="result" role="status" aria-live="polite"></div><p class="explain">The invoice stayed paid after the partial return. Amounts shown are token transfers. Other network or wallet charges may apply.</p></main><footer>Encode Solana Developer Hackathon · Aurora Intents</footer><script type="module" src="settlement.js"></script></body></html>

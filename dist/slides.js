@@ -1,4 +1,4 @@
-const titles = ['A fixed USDC invoice on Solana', 'The invoice sets the amount', 'A receipt the merchant can check', 'Refund handling', 'Try the evidence check'];
+const titles = ['A fixed USDC invoice on Solana', 'The payer receives a fixed quote', 'The finalized Solana credit', 'A partial refund on a paid invoice', 'Recheck the funded receipt'];
 const slide = document.getElementById('slide');
 const previous = document.getElementById('previous');
 const next = document.getElementById('next');
