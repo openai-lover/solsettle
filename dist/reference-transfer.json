@@ -1,0 +1,10 @@
+{
+  "observedAt": "2026-11-04T12:10:52.141Z",
+  "signature": "4kLHTLY5p4eg4F6jVL648K1JcrHa2qRMbdpRnd741EURRTSYmusWuGvdFnSgXZcmqrzsND7Ddm9WRYqAR4oa4f42",
+  "recipient": "F65QjtswLjs35S5JCiX3TMXWyZ1U94QnQDcACewkphbb",
+  "amount": "34.842798",
+  "atomic": "34842798",
+  "slot": 465297021,
+  "blockTime": 1793794251,
+  "source": "Public Solana RPC, finalized transfer identified through the canonical USDC mint. Unrelated to any SolSettle invoice or Aurora swap."
+}

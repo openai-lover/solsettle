@@ -9,6 +9,18 @@ export function units(value,decimals=6){
   if(n<=0n||n>1_000_000_000_000_000n)throw Error('Amount is outside the supported range.');
   return n.toString();
 }
+export function formatAtomic(value, decimals) {
+  if (!/^\d{1,40}$/.test(String(value)) || !Number.isInteger(decimals) || decimals < 0 || decimals > 30) throw Error('Token amount or decimals unavailable.');
+  const n = BigInt(value), scale = 10n ** BigInt(decimals);
+  if (!decimals) return n.toString();
+  const fraction = (n % scale).toString().padStart(decimals, '0').replace(/0+$/, '');
+  return (n / scale).toString() + (fraction ? '.' + fraction : '');
+}
+export function sourceAddress(chain, address) {
+  if (['sol','solana'].includes(chain)) return solAddress(address);
+  return ['eth','base','arb','op','bsc','avax','pol'].includes(chain) &&
+    typeof address === 'string' && /^0x[a-fA-F0-9]{40}$/.test(address) && !/^0x0{40}$/i.test(address);
+}
 export function solAddress(s){
   if(typeof s!=='string'||s.length<32||s.length>44||/^1+$/.test(s))return false;
   const alphabet='123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';let n=0n;
@@ -29,25 +41,65 @@ export function quoteRequest(inv,origin,destination,refundTo,{dry=true,now=Date.
   invoice(inv);if(Date.parse(inv.due+'T23:59:59Z')<now)throw Error('Invoice is past due. Ask the sender to issue a new one.');
   if(!origin?.assetId||!destinationToken([destination]))throw Error('The supported USDC route is unavailable.');
   if(!['eth','base','arb','op','bsc','avax','pol','sol','solana'].includes(origin.blockchain))throw Error('This source chain is not yet supported by SolSettle.');
-  if(['sol','solana'].includes(origin.blockchain)?!solAddress(refundTo):!/^0x[a-fA-F0-9]{40}$/.test(refundTo)||/^0x0{40}$/i.test(refundTo))throw Error('Enter a refund wallet on the selected source network.');
+  if(!sourceAddress(origin.blockchain,refundTo))throw Error('Enter a refund wallet on the selected source network.');
   if(origin.assetId===destination.assetId)throw Error('Choose a different source asset for this cross-chain checkout.');
-  return {dry,swapType:'EXACT_OUTPUT',depositType:'ORIGIN_CHAIN',depositMode:'SIMPLE',originAsset:origin.assetId,destinationAsset:destination.assetId,amount:units(inv.amount),slippageTolerance:50,refundTo,refundType:'ORIGIN_CHAIN',recipient:inv.recipient,recipientType:'DESTINATION_CHAIN',deadline:new Date(now+15*60*1000).toISOString()};
+  return {dry,swapType:'EXACT_OUTPUT',sessionId:inv.id,depositType:'ORIGIN_CHAIN',depositMode:'SIMPLE',originAsset:origin.assetId,destinationAsset:destination.assetId,amount:units(inv.amount),slippageTolerance:50,refundTo,refundType:'ORIGIN_CHAIN',recipient:inv.recipient,recipientType:'DESTINATION_CHAIN',deadline:new Date(now+15*60*1000).toISOString()};
 }
-export function validateQuote(response,request,{requireFresh=true}={}){
- const r=response?.quoteRequest,q=response?.quote;
- if(!r||!q||['dry','swapType','originAsset','destinationAsset','amount','recipient','recipientType','refundTo','refundType','depositType'].some(k=>r[k]!==request[k]))throw Error('Quote does not match this invoice. No payment instructions will be shown.');
- if(!/^\d+$/.test(q.amountIn)||!/^\d+$/.test(q.amountOut)||BigInt(q.amountOut)<BigInt(request.amount))throw Error('Quote does not cover the invoice amount.');
- if(!request.dry&&(!q.depositAddress||!Number.isFinite(Date.parse(q.deadline))||(requireFresh&&Date.parse(q.deadline)<=Date.now())))throw Error('Payment quote has expired or is missing deposit information.');
- return response;
+export function depositDeadline(quote) {
+  const dates = [quote?.deadline, quote?.timeWhenInactive].filter(Boolean).map(Date.parse);
+  return dates.length && dates.every(Number.isFinite) ? Math.min(...dates) : NaN;
 }
-export function reconcile(status,request,depositAddress){
- if(!status||typeof status.status!=='string')return {state:'UNVERIFIED',title:'Status unavailable',paid:false};
- const labels={PENDING_DEPOSIT:'Awaiting payment',KNOWN_DEPOSIT_TX:'Deposit detected',INCOMPLETE_DEPOSIT:'Deposit below required amount',PROCESSING:'Settlement in progress',REFUNDED:'Refunded',FAILED:'Payment failed'};
- if(status.status!=='SUCCESS')return {state:status.status,title:labels[status.status]||'Unrecognized status',paid:false};
- try{validateQuote(status.quoteResponse,request,{requireFresh:false});}catch{return {state:'UNVERIFIED',title:'Settlement needs review',paid:false};}
- const d=status.swapDetails;
- if(status.quoteResponse.quote.depositAddress!==depositAddress||!d||!/^\d+$/.test(d.amountOut||'')||BigInt(d.amountOut)<BigInt(request.amount)||!d.destinationChainTxHashes?.length)return {state:'UNVERIFIED',title:'Settlement evidence incomplete',paid:false};
- return {state:'SUCCESS',title:'Settled on Solana',paid:true};
+
+export function validateQuote(response, request, { requireFresh = true } = {}) {
+  const echoed = response?.quoteRequest;
+  const q = response?.quote;
+  const boundFields = ['dry', 'swapType', 'originAsset', 'destinationAsset', 'amount', 'recipient',
+    'recipientType', 'refundTo', 'refundType', 'depositType', 'depositMode', 'sessionId', 'deadline', 'slippageTolerance'];
+  if (!echoed || !q || boundFields.some(field => echoed[field] !== request[field])) {
+    throw Error('Aurora’s quote differs from the approved invoice terms. Check the route again.');
+  }
+  if (!/^[1-9]\d{0,29}$/.test(q.amountIn || '') || !/^[1-9]\d{0,29}$/.test(q.amountOut || '') ||
+      BigInt(q.amountOut) < BigInt(request.amount)) throw Error('This quote does not cover the invoice.');
+  const expiry = depositDeadline(q);
+  if (!request.dry && (typeof q.depositAddress !== 'string' || !q.depositAddress.trim() ||
+      !Number.isFinite(expiry) || (requireFresh && expiry <= Date.now()))) {
+    throw Error('This payment quote has expired or is missing deposit instructions.');
+  }
+  return response;
+}
+
+export function reconcile(status, request, depositAddress, proof = null) {
+  const result = (state, title, paid = false) => ({state, title, paid});
+  const unchecked = () => result('UNVERIFIED', 'Evidence needs review');
+  if (!status || typeof status.status !== 'string') return unchecked();
+  const state = status.status;
+  if (state === 'PENDING_DEPOSIT' && !status.quoteResponse) return result(state, 'Awaiting payment');
+  try { validateQuote(status.quoteResponse, request, { requireFresh: false }); } catch { return unchecked(); }
+  if (!depositAddress || request.dry || status.quoteResponse.quote.depositAddress !== depositAddress) return unchecked();
+  const details = status.swapDetails;
+  if (state === 'REFUNDED') {
+    if (!/^[1-9]\d{0,29}$/.test(details?.refundedAmount || '')) return result('REFUND_REVIEW', 'Refund amount needs confirmation');
+    return result(state, 'Refund reported by Aurora');
+  }
+  const labels = { PENDING_DEPOSIT:'Awaiting payment', KNOWN_DEPOSIT_TX:'Deposit detected',
+    INCOMPLETE_DEPOSIT:'Incomplete deposit', PROCESSING:'Settlement in progress', FAILED:'Payment failed' };
+  if (state !== 'SUCCESS') return Object.hasOwn(labels,state) ? result(state,labels[state]) : unchecked();
+  const hashes = Array.isArray(details?.destinationChainTxHashes) ? details.destinationChainTxHashes.map(tx => tx?.hash) : [];
+  if (!/^[1-9]\d{0,29}$/.test(details?.amountOut || '') || BigInt(details.amountOut) < BigInt(request.amount) ||
+      !Array.isArray(hashes) || !hashes.length || hashes.length > 10 ||
+      hashes.some(h => typeof h !== 'string' || !/^[1-9A-HJ-NP-Za-km-z]{64,88}$/.test(h)) ||
+      new Set(hashes).size !== hashes.length) return unchecked();
+  if (!proof) return result('CHAIN_CHECK_REQUIRED', 'Checking finalized Solana receipt');
+  if (!proof.sufficient || proof.network !== 'mainnet-beta' || proof.commitment !== 'finalized' ||
+      proof.recipient !== request.recipient || proof.mint !== USDC_MINT || proof.expectedAtomic !== request.amount ||
+      !/^[1-9]\d{0,29}$/.test(proof.creditedAtomic || '') || BigInt(proof.creditedAtomic) < BigInt(request.amount) ||
+      !Array.isArray(proof.transactions) || hashes.length !== proof.transactions.length ||
+      hashes.some((h,i) => proof.transactions[i]?.signature !== h)) return unchecked();
+  return result('SUCCESS', 'Verified on Solana', true);
+}
+
+export function canShowDeposit(state, quote, now = Date.now()) {
+  return state === 'PENDING_DEPOSIT' && Number.isFinite(depositDeadline(quote)) && now < depositDeadline(quote);
 }
 export function safeUrl(s){try{const u=new URL(s);return u.protocol==='https:'?u.href:null;}catch{return null;}}
 export async function aurora(path,key,options={}){

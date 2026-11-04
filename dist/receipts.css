@@ -1,0 +1,11 @@
+
+.receipt-layout { display: grid; grid-template-columns: minmax(0,1.15fr) minmax(0,1fr); gap: 20px; align-items:start; }
+.receipt-layout .card { min-width:0; }
+.proof-sheet { background:#edf2e7; }
+.proof-sheet h3 { margin: 20px 0 16px; }
+.proof-row { display:grid; grid-template-columns:minmax(94px,.68fr) minmax(0,1.32fr); gap:12px; border-bottom:1px solid #ccd5c8; padding:12px 0; align-items: baseline; }
+.proof-row > span { color:#4c5d50; font-size:13px; }
+.proof-row strong { overflow-wrap:anywhere; font-size:14px; }
+.proof-sheet .external { display:block; margin-top:15px; }
+.receipt-layout input { width:100%; min-width:0; }
+@media(max-width:760px){ .receipt-layout {grid-template-columns:1fr;} }
