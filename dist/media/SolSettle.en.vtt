@@ -1,132 +1,123 @@
 WEBVTT
 
-00:00:00.220 --> 00:00:04.210
-A design studio invoices in U S D C on Solana.
+00:00:00.220 --> 00:00:06.845
+A merchant prices work in U S D C on Solana, but the client holds U S D C on Base.
 
-00:00:04.210 --> 00:00:06.386
-Its client keeps funds on Base.
+00:00:06.845 --> 00:00:09.684
+SolSettle lets the merchant set the amount to receive.
 
-00:00:06.386 --> 00:00:11.464
-The studio needs a fixed amount, and someone has to check whether it arrived.
+00:00:09.684 --> 00:00:14.732
+Here is a real, funded test of that invoice, including a small return to the
+payer.
 
-00:00:11.464 --> 00:00:15.817
-SolSettle puts the invoice, routing terms, and destination receipt in one place.
+00:00:15.492 --> 00:00:18.659
+The public application has its own Aurora integration key.
 
-00:00:16.577 --> 00:00:20.878
-The merchant enters a project name, amount, due date, and Solana receiving wallet.
+00:00:18.659 --> 00:00:24.643
+In Live quotes, enter half a U S D C and request the current exact output price.
 
-00:00:20.878 --> 00:00:23.857
-The share link carries those terms to the client.
+00:00:24.643 --> 00:00:29.570
+The browser discovers native Base and Solana U S D C, then calls Aurora.
 
-00:00:23.857 --> 00:00:28.820
-The link is unsigned, so the client should confirm the receiving address with the
-merchant.
+00:00:29.570 --> 00:00:32.738
+This preview returns an estimate and no payment address.
 
-00:00:28.820 --> 00:00:31.798
-The app never asks for a wallet seed phrase.
+00:00:33.498 --> 00:00:39.133
+For the funded invoice, the merchant supplied a Solana receiving wallet, and the
+payer supplied a Base refund wallet.
 
-00:00:32.558 --> 00:00:36.306
-Here is a fictional two hundred fifty dollar design invoice.
+00:00:39.133 --> 00:00:47.734
+A fresh Aurora quote required zero point seven four eight eight eight eight U S D
+C on Base for exactly half a U S D C on Solana.
 
-00:00:36.306 --> 00:00:40.803
-In the sample, the client chooses U S D C on Base.
+00:00:47.734 --> 00:00:51.589
+The payer checked the instructions and signed the transfer in their own wallet.
 
-00:00:40.803 --> 00:00:43.801
-Live mode uses Aurora's exact output Swap API.
+00:00:52.349 --> 00:00:54.707
+After the deposit, Aurora reported success.
 
-00:00:43.801 --> 00:00:48.298
-It binds the amount, destination asset, recipient, source refund address and
-expiry.
+00:00:54.707 --> 00:00:59.815
+SolSettle bound that status to the signed quote originally issued for this
+invoice.
 
-00:00:48.298 --> 00:00:52.795
-The payer reviews a fresh quote before sending from their own wallet.
+00:00:59.815 --> 00:01:08.459
+It then checked successful execution, the canonical U S D C mint, the receiving
+owner, token transfers, and the net balance increase.
 
-00:00:52.795 --> 00:00:55.418
-The quote on this screen is simulated.
+00:01:08.459 --> 00:01:11.603
+Five hundred thousand atomic units reached the merchant.
 
-00:00:56.178 --> 00:00:58.279
-Now take the underfunded path.
+00:01:11.603 --> 00:01:13.175
+The invoice is paid.
 
-00:00:58.279 --> 00:01:07.102
-This fictional provider record reports two hundred forty-nine U S D C deposited,
-and two hundred forty-eight point nine five returned.
+00:01:13.935 --> 00:01:18.629
+The destination link opens the same transaction in the official Solana Explorer.
 
-00:01:07.102 --> 00:01:11.304
-The reconciliation function checks the original quote and refund details.
+00:01:18.629 --> 00:01:20.977
+It shows success and finalized confirmation.
 
-00:01:11.304 --> 00:01:13.405
-The invoice receives zero credit.
+00:01:20.977 --> 00:01:24.107
+The signature and slot identify this particular payment.
 
-00:01:13.405 --> 00:01:15.086
-The deposit instructions close.
+00:01:24.107 --> 00:01:29.976
+The merchant can inspect the transaction without trusting a number typed into the
+invoice interface.
 
-00:01:15.086 --> 00:01:20.128
-These sample amounts demonstrate the rules, and no refund transaction was sent.
+00:01:30.736 --> 00:01:34.193
+The same successful swap also included a partial refund.
 
-00:01:20.888 --> 00:01:25.960
-For a live check, open Verify a receipt and load the public reference.
+00:01:34.193 --> 00:01:37.266
+Aurora reported three hundred fifteen atomic units returned.
 
-00:01:25.960 --> 00:01:28.691
-These inputs identify an existing public transfer.
+00:01:37.266 --> 00:01:45.716
+A separate successful Base transaction contains a native U S D C transfer for
+precisely that amount to the original refund wallet.
 
-00:01:28.691 --> 00:01:31.422
-It is separate from the example invoice.
+00:01:45.716 --> 00:01:48.021
+This was an actual on-chain return.
 
-00:01:31.422 --> 00:01:35.323
-Pressing Verify asks a Solana node for the finalized transaction.
+00:01:48.021 --> 00:01:49.941
+The Solana invoice stayed paid.
 
-00:01:35.323 --> 00:01:37.664
-This action only reads public data.
+00:01:50.701 --> 00:01:54.425
+Judges can reproduce the result from the funded receipt.
 
-00:01:38.424 --> 00:01:40.212
-The node confirms successful execution.
+00:01:54.425 --> 00:01:56.907
+Select Recheck Aurora and both chains.
 
-00:01:40.212 --> 00:01:44.859
-SolSettle checks the mint, owner, transfer instructions and net change in token
-balances.
+00:01:56.907 --> 00:02:06.422
+SolSettle reads the provider status again and compares the original quote terms,
+the Base deposit, the finalized Solana credit, and the Base refund.
 
-00:01:44.859 --> 00:01:51.293
-Here the eligible credit is exactly thirty-four point eight four two seven nine
-eight U S D C.
+00:02:06.422 --> 00:02:09.317
+Each row opens the corresponding public transaction.
 
-00:01:51.293 --> 00:01:58.085
-An invoice in live checkout would also need a matching success response from
-Aurora for its own deposit address.
+00:02:09.317 --> 00:02:10.972
+Rechecking moves no funds.
 
-00:01:58.845 --> 00:02:03.695
-Open the destination transaction to inspect the same signature in Solana Explorer.
+00:02:11.732 --> 00:02:13.896
+An on-chain success alone is insufficient.
 
-00:02:03.695 --> 00:02:06.524
-The explorer reports success and finalized confirmation.
+00:02:13.896 --> 00:02:21.831
+Here the independent verifier checks the actual destination transaction against a
+larger expected amount, zero point five one U S D C.
 
-00:02:06.524 --> 00:02:08.545
-Its slot matches the receipt.
+00:02:21.831 --> 00:02:27.602
+The credit is still half a U S D C, so the check reports a shortfall.
 
-00:02:08.545 --> 00:02:12.991
-This gives the merchant an independent trail for the destination amount.
+00:02:27.602 --> 00:02:30.848
+This separate inspection leaves the original paid invoice intact.
 
-00:02:13.751 --> 00:02:18.062
-Raise the expected amount to thirty-five U S D C and check again.
+00:02:31.608 --> 00:02:35.344
+The repository includes setup instructions and twenty-six automated checks.
 
-00:02:18.062 --> 00:02:25.357
-The transaction still succeeded, but the credit falls short by zero point one five
-seven two zero two U S D C.
+00:02:35.344 --> 00:02:38.665
+The separate underfunded, full-refund example is labelled simulated.
 
-00:02:25.357 --> 00:02:28.673
-SolSettle reports the difference in the expected and credited figures.
+00:02:38.665 --> 00:02:44.478
+The Base deposit, Solana credit, and partial Base refund in this walkthrough are
+real.
 
-00:02:28.673 --> 00:02:30.663
-The underlying transaction has not changed.
-
-00:02:31.423 --> 00:02:37.208
-Twenty-three automated checks cover quote binding, missing evidence, short
-payments, refunds and duplicate signatures.
-
-00:02:37.208 --> 00:02:43.407
-This walkthrough showed simulated checkout and refund records, followed by an
-actual read-only mainnet lookup.
-
-00:02:43.407 --> 00:02:52.913
-The outstanding integration milestone is a funded cross-chain payment initiated by
-this project, followed to its own Solana U S D C receipt.
+00:02:44.478 --> 00:02:48.214
+The project receipt lets you recheck each of them.
 
