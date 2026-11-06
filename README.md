@@ -30,7 +30,7 @@ node server.mjs
 node --test tests/*.test.mjs
 ```
 
-Open http://127.0.0.1:4187/. Static deployments serve the contents of `dist/`. The hosted video and deck are also included under `dist/media/`. The test suite has 26 passing checks. Payment and refund cases in the suite use fixtures.
+Open http://127.0.0.1:4187/. The hosted video and deck are also included under `dist/media/`. The test suite has 30 passing checks. Payment and refund cases in the suite use fixtures. For the hosted Worker, run `node scripts/build-worker.mjs`; it embeds the 28 public assets and the restricted read-only relay in `dist/server/index.js`.
 
 ## Configure Aurora and follow an invoice
 
@@ -45,7 +45,7 @@ Open http://127.0.0.1:4187/. Static deployments serve the contents of `dist/`. T
 
 ## Verification boundaries
 
-The browser asks a public Solana RPC endpoint for the mainnet genesis hash and finalized parsed transaction data. It checks successful execution, signature, token program, canonical mint, token account owner, external transfers and the recipient's net increase using integer atomic units. Credits are capped by both the eligible transfers and the net increase. A changed owner, unavailable node, missing metadata, insufficient amount or duplicate signature cannot produce a newly verified payment. Old provider-only successes need a new check. When Aurora omits a client session ID in its status response, the originally issued quote must match the invoice, the provider signature and timestamp, the deposit address, the input/output amounts and the remaining bound terms. A completed record in this workspace cannot reuse another invoice's recorded signature.
+The browser asks a same-origin read-only relay for the mainnet genesis hash and finalized parsed transaction data. The relay forwards only these two methods to the official Solana mainnet endpoints with an OnFinality fallback, checking each provider's mainnet identity; it accepts no caller-supplied upstream, transaction submission, or weaker commitment. This avoids relying on a browser-accessible node whose historical transaction retention may be short. Upstream failures and null results never mark payment verified. It checks successful execution, signature, token program, canonical mint, token account owner, external transfers and the recipient's net increase using integer atomic units. Credits are capped by both the eligible transfers and the net increase. A changed owner, unavailable node, missing metadata, insufficient amount or duplicate signature cannot produce a newly verified payment. Old provider-only successes need a new check. When Aurora omits a client session ID in its status response, the originally issued quote must match the invoice, the provider signature and timestamp, the deposit address, the input/output amounts and the remaining bound terms. A completed record in this workspace cannot reuse another invoice's recorded signature.
 
 The workspace is local to a browser, with no shared merchant ledger or signed invoice identity. A merchant on a different device can independently check the destination receipt. Browser records and downloadable JSON are not attestations. The verifier depends on the selected RPC service's integrity and availability. A balance change alone does not prove it came through Aurora. SolSettle does not hold keys, connect to an exchange account or sign transfers.
 
@@ -60,6 +60,6 @@ The workspace is local to a browser, with no shared merchant ledger or signed in
 
 ## Sources
 
-[Aurora keys and fees](https://docs.intents.aurora.dev/getting-started/api-keys-and-fees.md) · [Supported tokens](https://docs.intents.aurora.dev/api-reference/swap-api-reference/get-supported-tokens.md) · [Quote schema](https://docs.intents.aurora.dev/api-reference/swap-api-reference/request-a-quote.md) · [Swap status](https://docs.intents.aurora.dev/api-reference/swap-api-reference/get-swap-status.md) · [Solana getTransaction](https://solana.com/docs/rpc/http/gettransaction) · [USDC mints](https://developers.circle.com/stablecoins/usdc-contract-addresses) · [Browser RPC provider](https://solana.publicnode.com/) · [Hackathon track](https://www.encodeclub.com/programmes/solana-hackathon-2026)
+[Aurora keys and fees](https://docs.intents.aurora.dev/getting-started/api-keys-and-fees.md) · [Supported tokens](https://docs.intents.aurora.dev/api-reference/swap-api-reference/get-supported-tokens.md) · [Quote schema](https://docs.intents.aurora.dev/api-reference/swap-api-reference/request-a-quote.md) · [Swap status](https://docs.intents.aurora.dev/api-reference/swap-api-reference/get-swap-status.md) · [Solana getTransaction](https://solana.com/docs/rpc/http/gettransaction) · [USDC mints](https://developers.circle.com/stablecoins/usdc-contract-addresses) · [Official RPC endpoints](https://solana.com/docs/references/clusters) · [Hackathon track](https://www.encodeclub.com/programmes/solana-hackathon-2026)
 
 New AI-assisted implementation for the Encode Solana Developer Hackathon, Aurora Intents track. The walkthrough uses captured application states and actions, a live independent mainnet read and English synthetic narration.

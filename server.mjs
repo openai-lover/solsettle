@@ -2,6 +2,8 @@ import http from 'node:http';
 import fs from 'node:fs/promises';
 import { createReadStream } from 'node:fs';
 import path from 'node:path';
+import {createHandler} from './worker/index.js';
+const relay=createHandler({});
 
 const root = path.resolve('dist');
 const types = {'.html':'text/html; charset=utf-8','.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml',
@@ -9,6 +11,15 @@ const types = {'.html':'text/html; charset=utf-8','.js':'text/javascript','.css'
   '.pptx':'application/vnd.openxmlformats-officedocument.presentationml.presentation'};
 
 http.createServer(async (req, res) => {
+  if(req.url==='/api/solana') {
+    try {
+      const chunks=[];let size=0;
+      for await(const chunk of req){size+=chunk.length;if(size>2048){res.writeHead(413);res.end();return;}chunks.push(chunk);}
+      const response=await relay(new Request('http://127.0.0.1:4187/api/solana',{method:req.method,headers:req.headers,...(['GET','HEAD'].includes(req.method)?{}:{body:Buffer.concat(chunks)})}));
+      res.writeHead(response.status,Object.fromEntries(response.headers));res.end(Buffer.from(await response.arrayBuffer()));
+    }catch{res.writeHead(502);res.end('Solana read unavailable');}
+    return;
+  }
   if (!['GET','HEAD'].includes(req.method)) { res.writeHead(405, {Allow:'GET, HEAD'}); res.end(); return; }
   try {
     const pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
