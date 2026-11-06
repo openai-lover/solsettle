@@ -1,6 +1,6 @@
 import { USDC_MINT, solAddress } from './core.js';
 
-export const SOLANA_RPC = 'https://solana-rpc.publicnode.com';
+export const SOLANA_RPC = '/api/solana';
 export const MAINNET_GENESIS = '5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d';
 export const TOKEN_PROGRAM = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
 const BASE58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
@@ -31,7 +31,7 @@ export async function rpc(method, params) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
-    signal: AbortSignal.timeout(18000),
+    signal: AbortSignal.timeout(40000),
     credentials: 'omit',
     referrerPolicy: 'no-referrer'
   });
@@ -107,7 +107,7 @@ export async function verifyCredits(recipient, expectedAtomic, signatures, readR
   const transactions = [];
   for (const sig of signatures) {
     const tx = await readRpc('getTransaction', [sig, { commitment: 'finalized', encoding: 'jsonParsed', maxSupportedTransactionVersion: 1 }]);
-    if (!tx) throw Error('The node has no finalized record yet. Keep the invoice open and retry.');
+    if (!tx) throw Error('The node did not return this finalized transaction. It may be unavailable or outside its retained history. Retry or inspect the explorer; this check has not verified payment.');
     transactions.push(inspectCredit(tx, sig, recipient));
   }
   const sum = transactions.reduce((n, tx) => n + BigInt(tx.creditedAtomic), 0n);
